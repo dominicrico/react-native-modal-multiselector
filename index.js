@@ -30,7 +30,7 @@ const propTypes = {
     visible:                        PropTypes.bool,
     closeOnChange:                  PropTypes.bool,
     initValue:                      PropTypes.string,
-    animationType:                  Modal.propTypes.animationType,
+    animationType:                  PropTypes.oneOf(['none', 'slide', 'fade']),
     style:                          ViewPropTypes.style,
     selectStyle:                    ViewPropTypes.style,
     selectTextStyle:                Text.propTypes.style,
@@ -49,7 +49,15 @@ const propTypes = {
     overlayStyle:                   ViewPropTypes.style,
     cancelText:                     PropTypes.string,
     disabled:                       PropTypes.bool,
-    supportedOrientations:          Modal.propTypes.supportedOrientations,
+    supportedOrientations:          PropTypes.arrayOf(
+                                      PropTypes.oneOf([
+                                        'portrait',
+                                        'portrait-upside-down',
+                                        'landscape',
+                                        'landscape-left',
+                                        'landscape-right',
+                                      ]),
+                                    ),
     keyboardShouldPersistTaps:      PropTypes.oneOfType([PropTypes.string, PropTypes.bool]),
     backdropPressToClose:           PropTypes.bool,
     openButtonContainerAccessible:  PropTypes.bool,
@@ -59,8 +67,6 @@ const propTypes = {
     scrollViewAccessibilityLabel:   PropTypes.string,
     cancelButtonAccessibilityLabel: PropTypes.string,
     passThruProps:                  PropTypes.object,
-    selectTextPassThruProps:        PropTypes.object,
-    optionTextPassThruProps:        PropTypes.object,
     modalOpenerHitSlop:             PropTypes.object,
     customSelector:                 PropTypes.node,
 };
@@ -72,7 +78,6 @@ const defaultProps = {
     onModalClose:                   () => {},
     keyExtractor:                   (item) => item.key,
     labelExtractor:                 (item) => item.label,
-    componentExtractor:             (item) => item.component,
     visible:                        false,
     closeOnChange:                  true,
     initValue:                      'Select me!',
@@ -105,8 +110,6 @@ const defaultProps = {
     scrollViewAccessibilityLabel:   undefined,
     cancelButtonAccessibilityLabel: undefined,
     passThruProps:                  {},
-    selectTextPassThruProps:        {},
-    optionTextPassThruProps:        {},
     modalOpenerHitSlop:             {top: 0, bottom: 0, left: 0, right: 0},
     customSelector:                 undefined,
 };
@@ -141,7 +144,7 @@ export default class ModalSelector extends React.Component {
     }
 
     onChange = (item) => {
-        if (Platform.OS === 'android' || !Modal.propTypes.onDismiss) {
+        if (Platform.OS === 'android' || (Modal.propTypes && !Modal.propTypes.onDismiss)) { // not shure if this is ok
             // RN >= 0.50 on iOS comes with the onDismiss prop for Modal which solves RN issue #10471
             this.props.onChange(item);
         }
@@ -171,28 +174,16 @@ export default class ModalSelector extends React.Component {
     }
 
     renderSection = (section) => {
-        const optionComponent = this.props.componentExtractor(section);
-        let component = optionComponent || (
-          <Text style={[styles.sectionTextStyle,this.props.sectionTextStyle]}>{this.props.labelExtractor(section)}</Text>
-        );
-
         return (
             <View key={this.props.keyExtractor(section)} style={[styles.sectionStyle,this.props.sectionStyle]}>
-                {component}
+                <Text style={[styles.sectionTextStyle,this.props.sectionTextStyle]}>{this.props.labelExtractor(section)}</Text>
             </View>
         );
     }
 
     renderOption = (option, isLastItem, isFirstItem) => {
-        const optionComponent = this.props.componentExtractor(option);
         const optionLabel = this.props.labelExtractor(option);
         const isSelectedItem = optionLabel === this.state.selected;
-
-        let component = optionComponent || (
-          <Text style={[styles.optionTextStyle,this.props.optionTextStyle,isSelectedItem && this.props.selectedItemTextStyle]} {...this.props.optionTextPassThruProps}>
-              {optionLabel}
-          </Text>
-        );
 
         return (
             <TouchableOpacity
@@ -204,8 +195,12 @@ export default class ModalSelector extends React.Component {
               importantForAccessibility={isFirstItem}
               {...this.props.passThruProps}
             >
-                <View style={[styles.optionStyle, this.props.optionStyle, isLastItem && {borderBottomWidth: 0}]}>
-                  {component}
+                <View style={[styles.optionStyle, this.props.optionStyle, isLastItem &&
+                {borderBottomWidth: 0}]}>
+                    <Text style={[styles.optionTextStyle,this.props.optionTextStyle,
+                                 isSelectedItem && this.props.selectedItemTextStyle]}>
+                        {optionLabel}
+                    </Text>
                 </View>
             </TouchableOpacity>);
     }
@@ -251,7 +246,7 @@ export default class ModalSelector extends React.Component {
         }
         return (
             <View style={[styles.selectStyle, this.props.selectStyle]}>
-                <Text style={[styles.selectTextStyle, this.props.selectTextStyle]} {...this.props.selectTextPassThruProps}>{this.state.selected}</Text>
+                <Text style={[styles.selectTextStyle, this.props.selectTextStyle]}>{this.state.selected}</Text>
             </View>
         );
     }
